@@ -26,6 +26,8 @@ public:
 
     void staysOnTop(bool top = true);
     void setHoverShow(bool enabled);
+    void setFrameless(bool enabled);
+    void setShowToolbar(bool enabled);
     void updateShowSize(const QSize &newSize);
     void updateRender(int width, int height, uint8_t* dataY, uint8_t* dataU, uint8_t* dataV, int linesizeY, int linesizeU, int linesizeV);
     void setSerial(const QString& serial);

@@ -75,6 +75,27 @@ VideoForm::VideoForm(bool framelessWindow, bool skin, bool showToolbar, int deco
     }
 }
 
+void VideoForm::setFrameless(bool enabled)
+{
+    const bool wasVisible = isVisible();
+    const QRect oldGeometry = geometry();
+    const Qt::WindowStates oldState = windowState();
+#ifndef Q_OS_MACOS
+    enabled = enabled || m_skin;
+#endif
+    if (bool(windowFlags() & Qt::FramelessWindowHint) == enabled) return;
+    setWindowFlag(Qt::FramelessWindowHint, enabled);
+    setGeometry(oldGeometry);
+    setWindowState(oldState);
+    if (wasVisible) show();
+}
+
+void VideoForm::setShowToolbar(bool enabled)
+{
+    show_toolbar = enabled;
+    if (!enabled || (isVisible() && !isFullScreen())) showToolForm(enabled);
+}
+
 void VideoForm::setHoverShow(bool enabled)
 {
     m_hoverEnabled = enabled;
@@ -772,6 +793,7 @@ void VideoForm::staysOnTop(bool top)
     }
     if (needShow) {
         show();
+        if (show_toolbar && !isFullScreen()) showToolForm(true);
     }
 }
 
@@ -995,7 +1017,7 @@ void VideoForm::showEvent(QShowEvent *event)
     Q_UNUSED(event)
     if (!isFullScreen() && this->show_toolbar) {
         QTimer::singleShot(500, this, [this](){
-            showToolForm(this->show_toolbar);
+            if (isVisible() && !isFullScreen()) showToolForm(this->show_toolbar);
         });
     }
 }
