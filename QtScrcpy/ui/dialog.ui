@@ -906,6 +906,11 @@
               </property>
              </widget>
             </item>
+            <item row="2" column="2">
+             <widget class="QCheckBox" name="hoverShowCheck">
+              <property name="text"><string>鼠标移入显示</string></property>
+             </widget>
+            </item>
             <item row="2" column="1">
              <widget class="QCheckBox" name="quitOnCloseCheck">
               <property name="toolTip">

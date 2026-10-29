@@ -25,6 +25,7 @@ public:
     ~VideoForm();
 
     void staysOnTop(bool top = true);
+    void setHoverShow(bool enabled);
     void updateShowSize(const QSize &newSize);
     void updateRender(int width, int height, uint8_t* dataY, uint8_t* dataU, uint8_t* dataV, int linesizeY, int linesizeU, int linesizeV);
     void setSerial(const QString& serial);
@@ -55,6 +56,9 @@ private:
     QRect getScreenRect();
 
 protected:
+#ifdef Q_OS_WIN
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+#endif
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -103,6 +107,10 @@ private:
     bool m_flexDisplay = false;
     bool m_preventAutoResize = false;
     QTimer m_flexResizeTimer;
+    QTimer m_hoverTimer;
+    QRect m_hoverRect;
+    bool m_hoverEnabled = false;
+    bool m_hoverHidden = false;
     QSize m_pendingDisplaySize;
 
     //Whether to display the toolbar when connecting a device.

@@ -1261,6 +1261,8 @@ void Dialog::onDeviceConnected(bool success, const QString &serial, const QStrin
     }
     auto videoForm = new VideoForm(ui->framelessCheck->isChecked(), Config::getInstance().getSkin(), ui->showToolbar->isChecked(), ui->decodeModeBox->currentIndex());
     videoForm->setSerial(serial);
+    videoForm->setHoverShow(ui->hoverShowCheck->isChecked());
+    connect(ui->hoverShowCheck, &QCheckBox::toggled, videoForm, &VideoForm::setHoverShow);
 
     qsc::IDeviceManage::getInstance().getDevice(serial)->setUserData(static_cast<void*>(videoForm));
     qsc::IDeviceManage::getInstance().getDevice(serial)->registerDeviceObserver(videoForm);

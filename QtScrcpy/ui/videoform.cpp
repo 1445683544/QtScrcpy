@@ -1,5 +1,7 @@
 // #include <QDesktopWidget>
+#include <QApplication>
 #include <QCoreApplication>
+#include <QCursor>
 #include <QFileInfo>
 #include <QLabel>
 #include <QMessageBox>
@@ -16,6 +18,7 @@
 
 #if defined(Q_OS_WIN32)
 #include <Windows.h>
+#include <windowsx.h>
 #endif
 
 #include "config.h"
@@ -41,6 +44,24 @@ VideoForm::VideoForm(bool framelessWindow, bool skin, bool showToolbar, int deco
             device->resizeDisplay(m_pendingDisplaySize);
         }
     });
+    m_hoverTimer.setInterval(40);
+    connect(&m_hoverTimer, &QTimer::timeout, this, [this]() {
+        if (!m_hoverEnabled || isFullScreen() || isMinimized()) return;
+        const QPoint cursor = QCursor::pos();
+        if (m_hoverHidden) {
+            if (m_hoverRect.contains(cursor)) {
+                m_hoverHidden = false;
+                show();
+            }
+        } else if (isVisible()) {
+            m_hoverRect = frameGeometry();
+            const bool inToolbar = m_toolForm && m_toolForm->isVisible() && m_toolForm->frameGeometry().contains(cursor);
+            if (!m_hoverRect.contains(cursor) && !inToolbar && QApplication::mouseButtons() == Qt::NoButton) {
+                m_hoverHidden = true;
+                hide();
+            }
+        }
+    });
     initUI();
     installShortcut();
     updateShowSize(size());
@@ -53,6 +74,49 @@ VideoForm::VideoForm(bool framelessWindow, bool skin, bool showToolbar, int deco
         setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
     }
 }
+
+void VideoForm::setHoverShow(bool enabled)
+{
+    m_hoverEnabled = enabled;
+    if (enabled) {
+        m_hoverTimer.start();
+    } else {
+        m_hoverTimer.stop();
+        if (m_hoverHidden) {
+            m_hoverHidden = false;
+            show();
+        }
+    }
+}
+
+#ifdef Q_OS_WIN
+bool VideoForm::nativeEvent(const QByteArray &eventType, void *message, long *result)
+{
+    MSG *msg = static_cast<MSG *>(message);
+    if ((windowFlags() & Qt::FramelessWindowHint) && !isFullScreen() && !isMaximized() && msg->message == WM_NCHITTEST) {
+        RECT r;
+        if (GetWindowRect(msg->hwnd, &r)) {
+            const int x = GET_X_LPARAM(msg->lParam), y = GET_Y_LPARAM(msg->lParam);
+            const int edge = 8;
+            const bool left = x >= r.left && x < r.left + edge;
+            const bool right = x < r.right && x >= r.right - edge;
+            const bool top = y >= r.top && y < r.top + edge;
+            const bool bottom = y < r.bottom && y >= r.bottom - edge;
+            if (top && left) *result = HTTOPLEFT;
+            else if (top && right) *result = HTTOPRIGHT;
+            else if (bottom && left) *result = HTBOTTOMLEFT;
+            else if (bottom && right) *result = HTBOTTOMRIGHT;
+            else if (left) *result = HTLEFT;
+            else if (right) *result = HTRIGHT;
+            else if (top) *result = HTTOP;
+            else if (bottom) *result = HTBOTTOM;
+            else return QWidget::nativeEvent(eventType, message, result);
+            return true;
+        }
+    }
+    return QWidget::nativeEvent(eventType, message, result);
+}
+#endif
 
 VideoForm::~VideoForm()
 {
