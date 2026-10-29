@@ -56,9 +56,7 @@ private:
     QRect getScreenRect();
 
 protected:
-#ifdef Q_OS_WIN
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
-#endif
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -111,6 +109,9 @@ private:
     QRect m_hoverRect;
     bool m_hoverEnabled = false;
     bool m_hoverHidden = false;
+    Qt::Edges m_resizeEdges;
+    QPoint m_resizeStart;
+    QRect m_resizeGeometry;
     QSize m_pendingDisplaySize;
 
     //Whether to display the toolbar when connecting a device.

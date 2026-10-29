@@ -89,34 +89,59 @@ void VideoForm::setHoverShow(bool enabled)
     }
 }
 
-#ifdef Q_OS_WIN
-bool VideoForm::nativeEvent(const QByteArray &eventType, void *message, long *result)
+bool VideoForm::eventFilter(QObject *watched, QEvent *event)
 {
-    MSG *msg = static_cast<MSG *>(message);
-    if ((windowFlags() & Qt::FramelessWindowHint) && !isFullScreen() && !isMaximized() && msg->message == WM_NCHITTEST) {
-        RECT r;
-        if (GetWindowRect(msg->hwnd, &r)) {
-            const int x = GET_X_LPARAM(msg->lParam), y = GET_Y_LPARAM(msg->lParam);
-            const int edge = 8;
-            const bool left = x >= r.left && x < r.left + edge;
-            const bool right = x < r.right && x >= r.right - edge;
-            const bool top = y >= r.top && y < r.top + edge;
-            const bool bottom = y < r.bottom && y >= r.bottom - edge;
-            if (top && left) *result = HTTOPLEFT;
-            else if (top && right) *result = HTTOPRIGHT;
-            else if (bottom && left) *result = HTBOTTOMLEFT;
-            else if (bottom && right) *result = HTBOTTOMRIGHT;
-            else if (left) *result = HTLEFT;
-            else if (right) *result = HTRIGHT;
-            else if (top) *result = HTTOP;
-            else if (bottom) *result = HTBOTTOM;
-            else return QWidget::nativeEvent(eventType, message, result);
-            return true;
-        }
-    }
-    return QWidget::nativeEvent(eventType, message, result);
-}
+    QWidget *widget = qobject_cast<QWidget *>(watched);
+    if (!widget || !(windowFlags() & Qt::FramelessWindowHint) || isFullScreen() || isMaximized())
+        return QWidget::eventFilter(watched, event);
+    if (event->type() != QEvent::MouseMove && event->type() != QEvent::MouseButtonPress && event->type() != QEvent::MouseButtonRelease)
+        return QWidget::eventFilter(watched, event);
+    auto *mouse = static_cast<QMouseEvent *>(event);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    const QPoint global = mouse->globalPos();
+#else
+    const QPoint global = mouse->globalPosition().toPoint();
 #endif
+    if (event->type() == QEvent::MouseButtonRelease && m_resizeEdges) {
+        m_resizeEdges = {};
+        mouse->accept();
+        return true;
+    }
+    if (event->type() == QEvent::MouseMove && m_resizeEdges) {
+        const QPoint delta = global - m_resizeStart;
+        QRect r = m_resizeGeometry;
+        const int minW = qMax(minimumWidth(), 100), minH = qMax(minimumHeight(), 100);
+        if (m_resizeEdges.testFlag(Qt::LeftEdge)) r.setLeft(qMin(r.left() + delta.x(), r.right() - minW + 1));
+        if (m_resizeEdges.testFlag(Qt::RightEdge)) r.setRight(qMax(r.right() + delta.x(), r.left() + minW - 1));
+        if (m_resizeEdges.testFlag(Qt::TopEdge)) r.setTop(qMin(r.top() + delta.y(), r.bottom() - minH + 1));
+        if (m_resizeEdges.testFlag(Qt::BottomEdge)) r.setBottom(qMax(r.bottom() + delta.y(), r.top() + minH - 1));
+        setGeometry(r);
+        mouse->accept();
+        return true;
+    }
+    const QPoint pos = mapFromGlobal(global);
+    const int border = 10;
+    Qt::Edges edges;
+    if (pos.x() >= 0 && pos.x() < border) edges |= Qt::LeftEdge;
+    else if (pos.x() < width() && pos.x() >= width() - border) edges |= Qt::RightEdge;
+    if (pos.y() >= 0 && pos.y() < border) edges |= Qt::TopEdge;
+    else if (pos.y() < height() && pos.y() >= height() - border) edges |= Qt::BottomEdge;
+    if (event->type() == QEvent::MouseMove && mouse->buttons() == Qt::NoButton) {
+        if ((edges.testFlag(Qt::LeftEdge) && edges.testFlag(Qt::TopEdge)) || (edges.testFlag(Qt::RightEdge) && edges.testFlag(Qt::BottomEdge))) widget->setCursor(Qt::SizeFDiagCursor);
+        else if ((edges.testFlag(Qt::RightEdge) && edges.testFlag(Qt::TopEdge)) || (edges.testFlag(Qt::LeftEdge) && edges.testFlag(Qt::BottomEdge))) widget->setCursor(Qt::SizeBDiagCursor);
+        else if (edges.testFlag(Qt::LeftEdge) || edges.testFlag(Qt::RightEdge)) widget->setCursor(Qt::SizeHorCursor);
+        else if (edges.testFlag(Qt::TopEdge) || edges.testFlag(Qt::BottomEdge)) widget->setCursor(Qt::SizeVerCursor);
+        else widget->unsetCursor();
+    }
+    if (event->type() == QEvent::MouseButtonPress && mouse->button() == Qt::LeftButton && edges) {
+        m_resizeEdges = edges;
+        m_resizeStart = global;
+        m_resizeGeometry = geometry();
+        mouse->accept();
+        return true;
+    }
+    return QWidget::eventFilter(watched, event);
+}
 
 VideoForm::~VideoForm()
 {
@@ -195,6 +220,12 @@ void VideoForm::initUI()
         m_videoWidget->setMouseTracking(true);
     }
     ui->keepRatioWidget->setMouseTracking(true);
+    installEventFilter(this);
+    ui->keepRatioWidget->installEventFilter(this);
+    if (m_videoWidget) m_videoWidget->installEventFilter(this);
+#ifdef Q_OS_MACOS
+    if (m_metalWidget) m_metalWidget->installEventFilter(this);
+#endif
 }
 
 QRect VideoForm::getGrabCursorRect()
