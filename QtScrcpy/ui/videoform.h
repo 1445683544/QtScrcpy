@@ -53,6 +53,7 @@ private:
     QMargins getMargins(bool vertical);
     void initUI();
     void updateNavigationBarGeometry();
+    void updateMoveHandle();
 
     void showToolForm(bool show = true);
     void moveCenter();
@@ -97,6 +98,9 @@ private:
 
     QPointer<QLabel> m_fpsLabel;
     QPointer<QWidget> m_navigationBar;
+    QPointer<QLabel> m_moveHandle;
+    bool m_movingWindow = false;
+    QPoint m_moveOffset;
 
     //inside member
     QSize m_frameSize;

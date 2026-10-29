@@ -76,6 +76,18 @@ VideoForm::VideoForm(bool framelessWindow, bool skin, bool showToolbar, int deco
     if (framelessWindow) {
         setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
     }
+    updateMoveHandle();
+}
+
+void VideoForm::updateMoveHandle()
+{
+    if (!m_moveHandle || !videoWidget()) return;
+    const QRect r = videoWidget()->geometry();
+    const bool enabled = (windowFlags() & Qt::FramelessWindowHint) && !isFullScreen() && !isMaximized();
+    const int handleWidth = qMin(70, r.width());
+    m_moveHandle->setGeometry(r.center().x() - handleWidth / 2, r.top() + 12, handleWidth, 20);
+    m_moveHandle->setVisible(enabled && r.width() > 0 && r.height() > 32);
+    if (enabled) m_moveHandle->raise();
 }
 
 void VideoForm::setNavigationBarVisible(bool enabled)
@@ -142,6 +154,7 @@ void VideoForm::setFrameless(bool enabled)
     setGeometry(oldGeometry);
     setWindowState(oldState);
     if (wasVisible) show();
+    updateMoveHandle();
 }
 
 void VideoForm::setShowToolbar(bool enabled)
@@ -167,7 +180,30 @@ void VideoForm::setHoverShow(bool enabled)
 bool VideoForm::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::Resize && (watched == ui->keepRatioWidget || watched == videoWidget())) {
-        QTimer::singleShot(0, this, [this]() { updateNavigationBarGeometry(); });
+        QTimer::singleShot(0, this, [this]() { updateNavigationBarGeometry(); updateMoveHandle(); });
+    }
+    if (watched == m_moveHandle && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseMove || event->type() == QEvent::MouseButtonRelease)) {
+        auto *mouse = static_cast<QMouseEvent *>(event);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        const QPoint global = mouse->globalPos();
+#else
+        const QPoint global = mouse->globalPosition().toPoint();
+#endif
+        if (event->type() == QEvent::MouseButtonPress && mouse->button() == Qt::LeftButton) {
+            m_movingWindow = true;
+            m_moveOffset = global - frameGeometry().topLeft();
+            m_moveHandle->setCursor(Qt::ClosedHandCursor);
+            return true;
+        }
+        if (event->type() == QEvent::MouseMove && m_movingWindow && (mouse->buttons() & Qt::LeftButton)) {
+            move(global - m_moveOffset);
+            return true;
+        }
+        if (event->type() == QEvent::MouseButtonRelease && mouse->button() == Qt::LeftButton && m_movingWindow) {
+            m_movingWindow = false;
+            m_moveHandle->setCursor(Qt::OpenHandCursor);
+            return true;
+        }
     }
     QWidget *widget = qobject_cast<QWidget *>(watched);
     if (!widget || !(windowFlags() & Qt::FramelessWindowHint) || isFullScreen() || isMaximized())
@@ -298,6 +334,13 @@ void VideoForm::initUI()
         m_videoWidget->setMouseTracking(true);
     }
     ui->keepRatioWidget->setMouseTracking(true);
+    m_moveHandle = new QLabel(QString::fromUtf8("\xE2\x8B\xAF"), ui->keepRatioWidget);
+    m_moveHandle->setAlignment(Qt::AlignCenter);
+    m_moveHandle->setToolTip(QString::fromUtf8("\xE6\x8B\x96\xE5\x8A\xA8\xE7\xA7\xBB\xE5\x8A\xA8\xE7\xAA\x97\xE5\x8F\xA3"));
+    m_moveHandle->setStyleSheet(QStringLiteral("background: rgba(30, 30, 30, 170); color: white; border-radius: 8px; font-size: 20px;"));
+    m_moveHandle->setCursor(Qt::OpenHandCursor);
+    m_moveHandle->installEventFilter(this);
+    m_moveHandle->hide();
     installEventFilter(this);
     ui->keepRatioWidget->installEventFilter(this);
     if (m_videoWidget) m_videoWidget->installEventFilter(this);
