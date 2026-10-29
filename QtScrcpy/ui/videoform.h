@@ -26,6 +26,7 @@ public:
 
     void staysOnTop(bool top = true);
     void setHoverShow(bool enabled);
+    void setNavigationBarVisible(bool enabled);
     void setFrameless(bool enabled);
     void setShowToolbar(bool enabled);
     void updateShowSize(const QSize &newSize);
@@ -51,6 +52,7 @@ private:
     void updateStyleSheet(bool vertical);
     QMargins getMargins(bool vertical);
     void initUI();
+    void updateNavigationBarGeometry();
 
     void showToolForm(bool show = true);
     void moveCenter();
@@ -94,6 +96,7 @@ private:
     QPointer<MetalVideoWidget> m_metalWidget;
 
     QPointer<QLabel> m_fpsLabel;
+    QPointer<QWidget> m_navigationBar;
 
     //inside member
     QSize m_frameSize;

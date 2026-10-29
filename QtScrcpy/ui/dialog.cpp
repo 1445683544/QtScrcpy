@@ -1263,6 +1263,8 @@ void Dialog::onDeviceConnected(bool success, const QString &serial, const QStrin
     videoForm->setSerial(serial);
     videoForm->setHoverShow(ui->hoverShowCheck->isChecked());
     connect(ui->hoverShowCheck, &QCheckBox::toggled, videoForm, &VideoForm::setHoverShow);
+    videoForm->setNavigationBarVisible(ui->navigationBarCheck->isChecked());
+    connect(ui->navigationBarCheck, &QCheckBox::toggled, videoForm, &VideoForm::setNavigationBarVisible);
     connect(ui->alwaysTopCheck, &QCheckBox::toggled, videoForm, &VideoForm::staysOnTop);
     connect(ui->fpsCheck, &QCheckBox::toggled, videoForm, &VideoForm::showFPS);
     connect(ui->showToolbar, &QCheckBox::toggled, videoForm, &VideoForm::setShowToolbar);

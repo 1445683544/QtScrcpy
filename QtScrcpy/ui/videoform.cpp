@@ -8,6 +8,7 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPushButton>
 #include <QScreen>
 #include <QShortcut>
 #include <QStyle>
@@ -77,6 +78,57 @@ VideoForm::VideoForm(bool framelessWindow, bool skin, bool showToolbar, int deco
     }
 }
 
+void VideoForm::setNavigationBarVisible(bool enabled)
+{
+    if (!m_navigationBar && enabled) {
+        auto *bar = new QWidget(ui->keepRatioWidget);
+        bar->setObjectName(QStringLiteral("navigationBar"));
+        bar->setStyleSheet(QStringLiteral("#navigationBar { background: #181818; } QPushButton { color: white; background: transparent; border: 0; font-size: 20px; } QPushButton:hover { background: #484848; }"));
+        auto *layout = new QHBoxLayout(bar);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(0);
+        auto *back = new QPushButton(QString::fromUtf8("\xE2\x97\x80"), bar);
+        auto *home = new QPushButton(QString::fromUtf8("\xE2\x97\x8B"), bar);
+        auto *overview = new QPushButton(QString::fromUtf8("\xE2\x96\xA1"), bar);
+        back->setToolTip(QString::fromUtf8("\xE8\xBF\x94\xE5\x9B\x9E"));
+        home->setToolTip(QString::fromUtf8("\xE6\xA1\x8C\xE9\x9D\xA2"));
+        overview->setToolTip(QString::fromUtf8("\xE4\xBB\xBB\xE5\x8A\xA1\xE6\x80\xBB\xE8\xA7\x88"));
+        for (auto *button : {back, home, overview}) {
+            button->setFocusPolicy(Qt::NoFocus);
+            button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            layout->addWidget(button);
+        }
+        connect(back, &QPushButton::clicked, this, [this]() {
+            auto device = qsc::IDeviceManage::getInstance().getDevice(m_serial);
+            if (device) device->postGoBack();
+        });
+        connect(home, &QPushButton::clicked, this, [this]() {
+            auto device = qsc::IDeviceManage::getInstance().getDevice(m_serial);
+            if (device) device->postGoHome();
+        });
+        connect(overview, &QPushButton::clicked, this, [this]() {
+            auto device = qsc::IDeviceManage::getInstance().getDevice(m_serial);
+            if (device) device->postAppSwitch();
+        });
+        m_navigationBar = bar;
+    }
+    if (m_navigationBar) {
+        updateNavigationBarGeometry();
+        m_navigationBar->setVisible(enabled);
+        if (enabled) m_navigationBar->raise();
+    }
+}
+
+void VideoForm::updateNavigationBarGeometry()
+{
+    QWidget *vw = videoWidget();
+    if (!m_navigationBar || !vw) return;
+    const QRect r = vw->geometry();
+    const int h = qMin(38, r.height());
+    m_navigationBar->setGeometry(r.left(), r.bottom() - h + 1, r.width(), h);
+    m_navigationBar->raise();
+}
+
 void VideoForm::setFrameless(bool enabled)
 {
     const bool wasVisible = isVisible();
@@ -114,6 +166,9 @@ void VideoForm::setHoverShow(bool enabled)
 
 bool VideoForm::eventFilter(QObject *watched, QEvent *event)
 {
+    if (event->type() == QEvent::Resize && (watched == ui->keepRatioWidget || watched == videoWidget())) {
+        QTimer::singleShot(0, this, [this]() { updateNavigationBarGeometry(); });
+    }
     QWidget *widget = qobject_cast<QWidget *>(watched);
     if (!widget || !(windowFlags() & Qt::FramelessWindowHint) || isFullScreen() || isMaximized())
         return QWidget::eventFilter(watched, event);
