@@ -52,7 +52,6 @@ private:
     void updateStyleSheet(bool vertical);
     QMargins getMargins(bool vertical);
     void initUI();
-    void updateNavigationBarGeometry();
     void updateMoveHandle();
 
     void showToolForm(bool show = true);

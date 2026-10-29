@@ -93,7 +93,9 @@ void VideoForm::updateMoveHandle()
 void VideoForm::setNavigationBarVisible(bool enabled)
 {
     if (!m_navigationBar && enabled) {
-        auto *bar = new QWidget(ui->keepRatioWidget);
+        auto *bar = new QWidget(this);
+        bar->setFixedHeight(38);
+        ui->verticalLayout->addWidget(bar);
         bar->setObjectName(QStringLiteral("navigationBar"));
         bar->setStyleSheet(QStringLiteral("#navigationBar { background: #181818; } QPushButton { color: white; background: transparent; border: 0; font-size: 20px; } QPushButton:hover { background: #484848; }"));
         auto *layout = new QHBoxLayout(bar);
@@ -125,20 +127,8 @@ void VideoForm::setNavigationBarVisible(bool enabled)
         m_navigationBar = bar;
     }
     if (m_navigationBar) {
-        updateNavigationBarGeometry();
         m_navigationBar->setVisible(enabled);
-        if (enabled) m_navigationBar->raise();
     }
-}
-
-void VideoForm::updateNavigationBarGeometry()
-{
-    QWidget *vw = videoWidget();
-    if (!m_navigationBar || !vw) return;
-    const QRect r = vw->geometry();
-    const int h = qMin(38, r.height());
-    m_navigationBar->setGeometry(r.left(), r.bottom() - h + 1, r.width(), h);
-    m_navigationBar->raise();
 }
 
 void VideoForm::setFrameless(bool enabled)
@@ -180,7 +170,7 @@ void VideoForm::setHoverShow(bool enabled)
 bool VideoForm::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::Resize && (watched == ui->keepRatioWidget || watched == videoWidget())) {
-        QTimer::singleShot(0, this, [this]() { updateNavigationBarGeometry(); updateMoveHandle(); });
+        QTimer::singleShot(0, this, [this]() { updateMoveHandle(); });
     }
     if (watched == m_moveHandle && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseMove || event->type() == QEvent::MouseButtonRelease)) {
         auto *mouse = static_cast<QMouseEvent *>(event);
