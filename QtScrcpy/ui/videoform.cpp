@@ -52,12 +52,14 @@ VideoForm::VideoForm(bool framelessWindow, bool skin, bool showToolbar, int deco
             if (m_hoverRect.contains(cursor)) {
                 m_hoverHidden = false;
                 show();
+                if (show_toolbar) showToolForm(true);
             }
         } else if (isVisible()) {
             m_hoverRect = frameGeometry();
             const bool inToolbar = m_toolForm && m_toolForm->isVisible() && m_toolForm->frameGeometry().contains(cursor);
             if (!m_hoverRect.contains(cursor) && !inToolbar && QApplication::mouseButtons() == Qt::NoButton) {
                 m_hoverHidden = true;
+                if (m_toolForm) m_toolForm->hide();
                 hide();
             }
         }
@@ -353,8 +355,14 @@ void VideoForm::setSerial(const QString &serial)
 
 void VideoForm::showToolForm(bool show)
 {
+    if (!show) {
+        if (m_toolForm) m_toolForm->hide();
+        return;
+    }
+    if (!show_toolbar || !isVisible() || isFullScreen() || m_hoverHidden) return;
     if (!m_toolForm) {
         m_toolForm = new ToolForm(this, ToolForm::AP_OUTSIDE_RIGHT);
+        m_toolForm->setAutoShowOnParentFocus(false);
         m_toolForm->setSerial(m_serial);
     }
     m_toolForm->move(pos().x() + geometry().width(), pos().y() + 30);
@@ -1017,9 +1025,15 @@ void VideoForm::showEvent(QShowEvent *event)
     Q_UNUSED(event)
     if (!isFullScreen() && this->show_toolbar) {
         QTimer::singleShot(500, this, [this](){
-            if (isVisible() && !isFullScreen()) showToolForm(this->show_toolbar);
+            if (show_toolbar && isVisible() && !isFullScreen() && !m_hoverHidden) showToolForm(true);
         });
     }
+}
+
+void VideoForm::hideEvent(QHideEvent *event)
+{
+    if (m_toolForm) m_toolForm->hide();
+    QWidget::hideEvent(event);
 }
 
 void VideoForm::resizeEvent(QResizeEvent *event)

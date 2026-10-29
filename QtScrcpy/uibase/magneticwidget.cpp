@@ -38,7 +38,7 @@ bool MagneticWidget::eventFilter(QObject *watched, QEvent *event)
     if (m_adsorbed && QEvent::Move == event->type()) {
         move(m_adsorbWidget->pos() - m_relativePos);
     }
-    if (m_adsorbed && (QEvent::Show == event->type() || QEvent::FocusIn == event->type())) {
+    if (m_autoShowOnParentFocus && m_adsorbed && (QEvent::Show == event->type() || QEvent::FocusIn == event->type())) {
         show();
         raise();
     }
